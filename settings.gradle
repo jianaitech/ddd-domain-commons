@@ -1,0 +1,2 @@
+rootProject.name = 'ddd-domain-commons'
+enableFeaturePreview("STABLE_PUBLISHING")

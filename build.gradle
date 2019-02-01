@@ -1,0 +1,135 @@
+group = 'com.jianaitech.ddd'
+version = '0.1.0-SNAPSHOT'
+
+apply plugin: 'java'
+apply plugin: 'maven-publish'
+apply plugin: 'checkstyle'
+apply plugin: 'findbugs'
+apply plugin: 'pmd'
+apply plugin: 'jdepend'
+apply plugin: 'jacoco'
+
+ext {
+    linkHomepage = "https://github.com/jianaitech/ddd-domain-commons"
+    linkIssue = "https://github.com/jianaitech/ddd-domain-commons/issues"
+    linkScmUrl = "https://github.com/jianaitech/ddd-domain-commons"
+    linkScmConnection = "scm:git:git://github.com/jianaitech/ddd-domain-commons.git"
+    linkScmDevConnection = "scm:git:ssh://git@github.com:jianaitech/ddd-domain-commons.git"
+
+    commonsLang3Version = "3.+"
+    commonsCollections4Version = "4.+"
+
+    mockitoVersion = "2.23.4"
+    junitVersion = "4.12"
+    hamcrestVersion = "2.1"
+    findbugsVersion = "3.0.1"
+}
+
+tasks.withType(Checkstyle) {
+    reports {
+        xml.enabled false
+        html.enabled true
+        html.stylesheet resources.text.fromFile('config/xsl/checkstyle-custom.xsl')
+    }
+}
+tasks.withType(FindBugs) {
+    reports {
+        xml.enabled false
+        html.enabled true
+        html.stylesheet resources.text.fromFile('config/xsl/findbugs-custom.xsl')
+    }
+}
+
+jacoco {
+    toolVersion = "0.8.2"
+    reportsDir = file("$buildDir/reports/jacoco")
+}
+
+dependencies {
+    compile("org.apache.commons:commons-lang3:${commonsLang3Version}")
+    compile("org.apache.commons:commons-collections4:${commonsCollections4Version}")
+
+    testImplementation("junit:junit:${junitVersion}") {
+        exclude group: 'org.hamcrest', module: 'hamcrest-core'
+    }
+    testImplementation("org.mockito:mockito-core:${mockitoVersion}") {
+        exclude group: 'org.hamcrest', module: 'hamcrest-core'
+    }
+    testImplementation("org.hamcrest:hamcrest:${hamcrestVersion}")
+
+    testCompileOnly "com.google.code.findbugs:annotations:${findbugsVersion}"
+    testCompileOnly "com.google.code.findbugs:jsr305:${findbugsVersion}"
+}
+
+repositories {
+    mavenCentral()
+    jcenter()
+}
+
+task sourceJar(type: Jar) {
+    from sourceSets.main.allJava
+}
+
+test {
+    jacoco {
+        append = false
+        destinationFile = file("$buildDir/jacoco/jacocoTest.exec")
+        classDumpDir = file("$buildDir/jacoco/classpathdumps")
+    }
+}
+
+jacocoTestReport {
+    reports {
+        xml.enabled false
+        csv.enabled false
+        html.destination file("${buildDir}/reports/jacoco")
+    }
+}
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.8
+            }
+        }
+
+        rule {
+            enabled = false
+            element = 'CLASS'
+            includes = ['com.jianaitech.*']
+
+            limit {
+                counter = 'LINE'
+                value = 'TOTALCOUNT'
+                maximum = 0.85
+            }
+        }
+    }
+}
+
+check.dependsOn jacocoTestCoverageVerification
+check.dependsOn jacocoTestReport
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+
+            artifact sourceJar {
+                classifier "sources"
+            }
+        }
+    }
+}
+
+publishing {
+    repositories {
+        maven {
+            def releasesRepoUrl = "$buildDir/repos/releases"
+            def snapshotsRepoUrl = "$buildDir/repos/snapshots"
+            url project.hasProperty("release") ? releasesRepoUrl : snapshotsRepoUrl
+            url version.endsWith("SNAPSHOT") ? snapshotsRepoUrl : releasesRepoUrl
+        }
+    }
+}
